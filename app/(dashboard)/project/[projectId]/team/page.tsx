@@ -14,6 +14,13 @@ interface TeamPageProps {
   }>;
 }
 
+interface ProjectMember {
+  id: string;
+  name: string | null;
+  email: string;
+  role: string;
+}
+
 export default async function TeamPage({ params }: TeamPageProps) {
   const { projectId } = await params;
   const user = await getCurrentUser();
@@ -87,7 +94,7 @@ export default async function TeamPage({ params }: TeamPageProps) {
 
       <div className="bg-white rounded-kanban border border-border-default overflow-hidden shadow-sm">
         <div className="divide-y divide-border-default">
-          {members.map((member) => (
+          {members.map((member: ProjectMember) => (
             <div key={member.id} className="p-4 flex items-center justify-between hover:bg-bg-base transition-colors">
               <div className="flex items-center gap-4">
                 <Avatar className="h-10 w-10 border border-border-default shadow-sm">
