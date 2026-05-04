@@ -1,0 +1,8 @@
+[build]
+builder = "NIXPACKS"
+
+[phases.setup]
+nixPkgs = ["nodejs"]
+
+[phases.build]
+cmds = ["npm install", "npx prisma generate", "npm run build"]
