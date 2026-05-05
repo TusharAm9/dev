@@ -18,6 +18,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
     }
   }
 
+  if (!user) {
+    return (
+      <div className="flex h-screen items-center justify-center p-4">
+        <div className="p-4 bg-red-50 text-red-800 rounded-md shadow-md max-w-md">
+          <h2 className="font-bold mb-2">User profile not found</h2>
+          <p className="text-sm">We couldn't find your user record in the database. Please ensure your database connection is active and that your user profile has been created.</p>
+        </div>
+      </div>
+    );
+  }
+
   // Now that we've ensured the user exists in Prisma, fetch the rest
   const [projects, users] = await Promise.all([
     getProjects(),

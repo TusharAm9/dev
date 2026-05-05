@@ -17,7 +17,13 @@ interface ProjectPageProps {
 export default async function ProjectPage({ params }: ProjectPageProps) {
   const { projectId } = await params;
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) {
+    return (
+      <div className="p-4 text-center mt-10">
+        User profile not found. Please complete registration.
+      </div>
+    );
+  }
 
   // Verify project exists and user has access
   const project = await prisma.project.findFirst({

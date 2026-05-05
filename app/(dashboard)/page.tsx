@@ -4,7 +4,13 @@ import { redirect } from "next/navigation";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) {
+    return (
+      <div className="p-4 text-center mt-10">
+        User profile not found. Please complete registration.
+      </div>
+    );
+  }
 
   const projects = await getProjects();
 
