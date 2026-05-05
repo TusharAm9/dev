@@ -4,7 +4,7 @@ import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { Task } from "@/components/tasks/task-card";
 import { notFound } from "next/navigation";
 import { LayoutDashboard, History } from "lucide-react";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 
