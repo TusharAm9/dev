@@ -14,10 +14,13 @@ export async function POST() {
     const { error } = await supabaseAdmin
       .from('User')
       .upsert({ 
+        id: user.id,
         supabaseId: user.id, 
         email: user.email!, 
         name: user.user_metadata?.full_name ?? user.email!.split("@")[0],
-        role: "ADMIN" // Default for new synced users
+        role: "ADMIN", // Default for new synced users
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       }, {
         onConflict: 'supabaseId'
       });

@@ -21,10 +21,13 @@ export async function syncUser() {
   const { error: upsertError } = await supabaseAdmin
     .from('User')
     .upsert({
+      id: user.id,
       supabaseId: user.id,
       email: user.email!,
       name: user.user_metadata?.full_name ?? user.email!.split("@")[0],
       role: "ADMIN",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     }, {
       onConflict: 'supabaseId'
     });
@@ -72,5 +75,19 @@ export async function getUsers() {
 
   if (error) throw new Error(error.message);
   return data;
+}
+
+export async function signIn(email: string, password: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+
+  await syncUser();
+}
+
+export async function signUp(email: string, password: string) {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) throw error;
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { createClient } from "@/lib/supabase";
+import { signIn, signUp } from "@/actions/auth";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, Loader2, LayoutDashboard } from "lucide-react";
 
@@ -9,7 +9,6 @@ type AuthMode = "login" | "signup";
 
 export default function LoginPage() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [mode, setMode] = React.useState<AuthMode>("login");
   const [email, setEmail] = React.useState("");
@@ -27,15 +26,11 @@ export default function LoginPage() {
 
     try {
       if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        // Sync user to Prisma DB then navigate
-        await fetch("/api/auth/sync", { method: "POST" });
+        await signIn(email, password);
         router.push("/");
         router.refresh();
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
-        if (error) throw error;
+        await signUp(email, password);
         setMessage("Account created! Check your email to confirm, then sign in.");
       }
     } catch (err: unknown) {
