@@ -10,6 +10,12 @@ const CreateProjectSchema = z.object({
   description: z.string().max(500).optional(),
 });
 
+const UpdateProjectSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+});
+
 export async function createProject(raw: unknown) {
   const caller = await getCurrentUser();
   if (!caller) throw new Error("UNAUTHORIZED");
@@ -20,8 +26,11 @@ export async function createProject(raw: unknown) {
   const { data: project, error } = await supabaseAdmin
     .from('Project')
     .insert({
+      id: crypto.randomUUID(),
       title: data.title,
       description: data.description,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     })
     .select()
     .single();
@@ -157,4 +166,29 @@ export async function removeProjectMember(projectId: string, userId: string) {
 
   revalidatePath(`/project/${projectId}/team`);
   revalidatePath("/");
+}
+
+export async function updateProject(raw: unknown) {
+  const caller = await getCurrentUser();
+  if (!caller) throw new Error("UNAUTHORIZED");
+  if (caller.role !== "ADMIN") throw new Error("FORBIDDEN: Only Admins can update projects.");
+
+  const { id, title, description } = UpdateProjectSchema.parse(raw);
+
+  const { data: updated, error } = await supabaseAdmin
+    .from('Project')
+    .update({ 
+      title, 
+      description,
+      updatedAt: new Date().toISOString()
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  revalidatePath(`/project/${id}`);
+  revalidatePath("/");
+  return updated;
 }

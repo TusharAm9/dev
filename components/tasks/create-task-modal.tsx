@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -94,8 +95,11 @@ export function CreateTaskModal({ projects, users }: CreateTaskModalProps) {
       <DialogContent className="sm:max-w-[425px] rounded-kanban bg-white border-border-default shadow-lg">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-text-primary">Create New Task</DialogTitle>
+          <DialogDescription>
+            Fill in the details below to add a new task to your project.
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-4">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
           <div className="space-y-1.5">
             <Label htmlFor="title" className="text-text-primary font-semibold">Title</Label>
             <Input
@@ -117,7 +121,7 @@ export function CreateTaskModal({ projects, users }: CreateTaskModalProps) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-6">
             <div className="space-y-1.5">
               <Label className="text-text-primary font-semibold">Priority</Label>
               <Select
@@ -127,7 +131,7 @@ export function CreateTaskModal({ projects, users }: CreateTaskModalProps) {
                 <SelectTrigger className="rounded-task border-border-default">
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
-                <SelectContent className="rounded-task border-border-default shadow-md">
+                <SelectContent position="popper" sideOffset={4} className="rounded-task border-border-default shadow-md">
                   <SelectItem value="LOW">Low</SelectItem>
                   <SelectItem value="MEDIUM">Medium</SelectItem>
                   <SelectItem value="HIGH">High</SelectItem>
@@ -144,7 +148,7 @@ export function CreateTaskModal({ projects, users }: CreateTaskModalProps) {
                 <SelectTrigger className="rounded-task border-border-default">
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
-                <SelectContent className="rounded-task border-border-default shadow-md">
+                <SelectContent position="popper" sideOffset={4} className="rounded-task border-border-default shadow-md">
                   {projects.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.title}
@@ -161,7 +165,7 @@ export function CreateTaskModal({ projects, users }: CreateTaskModalProps) {
               <SelectTrigger className="rounded-task border-border-default">
                 <SelectValue placeholder="Assign to user" />
               </SelectTrigger>
-              <SelectContent className="rounded-task border-border-default shadow-md">
+              <SelectContent position="popper" sideOffset={4} className="rounded-task border-border-default shadow-md">
                 {users.map((u) => (
                   <SelectItem key={u.id} value={u.id}>
                     {u.name || u.email}

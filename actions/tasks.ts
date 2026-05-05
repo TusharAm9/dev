@@ -45,6 +45,7 @@ export async function createTask(raw: unknown) {
   const { data: task, error } = await supabaseAdmin
     .from('Task')
     .insert({
+      id: crypto.randomUUID(),
       title: data.title,
       description: data.description,
       status: data.status,
@@ -52,11 +53,14 @@ export async function createTask(raw: unknown) {
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
       projectId: data.projectId,
       assigneeId: data.assigneeId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     })
     .select()
     .single();
 
   if (error) throw new Error(error.message);
+  if (!task) throw new Error("Failed to create task: No data returned.");
 
   await logActivity({
     type: "TASK_CREATED",
@@ -65,6 +69,7 @@ export async function createTask(raw: unknown) {
     projectId: task.projectId,
   });
 
+  revalidatePath(`/project/${task.projectId}`);
   revalidatePath("/");
   return task;
 }
@@ -89,7 +94,7 @@ export async function updateTaskStatus(raw: unknown) {
 
   const { data: updated, error: updateError } = await supabaseAdmin
     .from('Task')
-    .update({ status })
+    .update({ status, updatedAt: new Date().toISOString() })
     .eq('id', taskId)
     .select()
     .single();
@@ -133,6 +138,7 @@ export async function updateTask(raw: unknown) {
     .update({
       ...updates,
       dueDate: updates.dueDate ? new Date(updates.dueDate) : undefined,
+      updatedAt: new Date().toISOString(),
     })
     .eq('id', id)
     .select()

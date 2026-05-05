@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +27,7 @@ import { updateTask, deleteTask } from "@/actions/tasks";
 import { Task } from "./task-card";
 
 const updateSchema = z.object({
-  id: z.string().cuid(),
+  id: z.string(),
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH"]),
@@ -108,8 +109,12 @@ export function TaskDetailModal({ task, users, open, onOpenChange }: TaskDetailM
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] rounded-kanban bg-white border-border-default shadow-2xl p-0 overflow-hidden">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Task Details</DialogTitle>
+          <DialogDescription>View and edit task information.</DialogDescription>
+        </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="p-6 space-y-6">
+          <div className="p-6 space-y-8">
             <div className="space-y-4">
               <Input
                 {...register("title")}
@@ -126,7 +131,7 @@ export function TaskDetailModal({ task, users, open, onOpenChange }: TaskDetailM
                   <SelectTrigger className="rounded-task border-border-default bg-bg-base">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-task border-border-default shadow-md">
+                  <SelectContent position="popper" sideOffset={4} className="rounded-task border-border-default shadow-md">
                     <SelectItem value="TODO">To Do</SelectItem>
                     <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
                     <SelectItem value="DONE">Done</SelectItem>
@@ -140,7 +145,7 @@ export function TaskDetailModal({ task, users, open, onOpenChange }: TaskDetailM
                   <SelectTrigger className="rounded-task border-border-default bg-bg-base">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-task border-border-default shadow-md">
+                  <SelectContent position="popper" sideOffset={4} className="rounded-task border-border-default shadow-md">
                     <SelectItem value="LOW">Low</SelectItem>
                     <SelectItem value="MEDIUM">Medium</SelectItem>
                     <SelectItem value="HIGH">High</SelectItem>
@@ -155,7 +160,7 @@ export function TaskDetailModal({ task, users, open, onOpenChange }: TaskDetailM
                 <SelectTrigger className="rounded-task border-border-default bg-bg-base">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-task border-border-default shadow-md">
+                <SelectContent position="popper" sideOffset={4} className="rounded-task border-border-default shadow-md">
                   {users.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.name || u.email}

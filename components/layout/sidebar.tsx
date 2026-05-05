@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { CreateProjectModal } from "@/components/projects/create-project-modal";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   projects?: { id: string; title: string }[];
@@ -78,9 +79,12 @@ export function Sidebar({ projects = [], className }: SidebarProps) {
 
           <div className="pt-4">
             {!isCollapsed && (
-              <h3 className="px-4 mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
-                Active Projects
-              </h3>
+              <div className="flex items-center justify-between px-4 mb-2">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
+                  Active Projects
+                </h3>
+                <CreateProjectModal />
+              </div>
             )}
             <div className="space-y-1">
               {projects.map((project) => (

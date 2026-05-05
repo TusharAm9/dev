@@ -37,12 +37,12 @@ export async function ActivityFeed({ projectId }: ActivityFeedProps) {
           <div key={activity.id} className="flex gap-3 text-sm">
             <Avatar className="h-8 w-8 border border-border-default shrink-0">
               <AvatarFallback className="bg-bg-surface text-white text-[10px] font-bold">
-                {activity.user.name?.[0] || activity.user.email[0].toUpperCase()}
+                {activity.user?.name?.[0] || activity.user?.email?.[0]?.toUpperCase() || "?"}
               </AvatarFallback>
             </Avatar>
             <div className="space-y-0.5">
               <p className="text-text-primary leading-tight">
-                <span className="font-bold">{activity.user.name || activity.user.email}</span>{" "}
+                <span className="font-bold">{activity.user?.name || activity.user?.email || "System"}</span>{" "}
                 <span className="text-text-muted">{activity.content.toLowerCase()}</span>
               </p>
               <p className="text-[10px] text-text-muted font-medium">

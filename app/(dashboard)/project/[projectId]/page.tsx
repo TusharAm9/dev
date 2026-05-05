@@ -7,6 +7,8 @@ import { LayoutDashboard, History } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
+import { EditProjectModal } from "@/components/projects/edit-project-modal";
+import { Settings } from "lucide-react";
 
 interface ProjectPageProps {
   params: Promise<{
@@ -59,15 +61,24 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     description: t.description ?? "",
     status: t.status as Task["status"],
     priority: t.priority as Task["priority"],
-    dueDate: t.dueDate ? new Date(t.dueDate).toISOString().split("T")[0] : undefined,
+    dueDate: t.dueDate && !isNaN(new Date(t.dueDate).getTime()) 
+      ? new Date(t.dueDate).toISOString().split("T")[0] 
+      : undefined,
     assignee: {
-      id: t.assignee.id,
-      name: t.assignee.name ?? t.assignee.email,
+      id: t.assignee?.id ?? "unknown",
+      name: t.assignee?.name ?? t.assignee?.email ?? "Unassigned",
     },
   }));
 
   return (
     <div className="h-full flex flex-col p-6 overflow-hidden">
+      <div className="flex items-center justify-between mb-6 shrink-0">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-text-primary tracking-tight">{project.title}</h1>
+          <EditProjectModal project={project} />
+        </div>
+      </div>
+      
       <Tabs defaultValue="board" className="h-full flex flex-col">
         <div className="flex items-center justify-between mb-6 shrink-0">
           <TabsList className="bg-bg-base border border-border-default rounded-full p-1 h-10">
