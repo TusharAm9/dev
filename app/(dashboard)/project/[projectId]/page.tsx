@@ -2,9 +2,9 @@ import { getCurrentUser, getUsers } from "@/actions/auth";
 import { getTasks } from "@/actions/tasks";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { Task } from "@/components/tasks/task-card";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { LayoutDashboard, History } from "lucide-react";
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 
@@ -26,14 +26,24 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   }
 
   // Verify project exists and user has access
-  const project = await prisma.project.findFirst({
-    where: {
-      id: projectId,
-      members: { some: { id: user.id } },
-    },
-  });
+  const { data: membership, error: memError } = await supabaseAdmin
+    .from('_ProjectMembers')
+    .select('A')
+    .eq('A', projectId)
+    .eq('B', user.id)
+    .single();
 
-  if (!project) {
+  if (memError || !membership) {
+    notFound();
+  }
+
+  const { data: project, error: projError } = await supabaseAdmin
+    .from('Project')
+    .select('*')
+    .eq('id', projectId)
+    .single();
+
+  if (projError || !project) {
     notFound();
   }
 
@@ -42,7 +52,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     getUsers(),
   ]);
 
-  // Map Prisma tasks to the Task shape used by TaskCard
+  // Map tasks to the Task shape used by TaskCard
   const tasks: Task[] = (dbTasks as any[]).map((t) => ({
     id: t.id,
     title: t.title,

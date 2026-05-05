@@ -8,17 +8,15 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "next start -p ${PORT:-3000}",
-    "lint": "eslint",
-    "postinstall": "prisma generate"
+    "lint": "eslint"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@prisma/adapter-pg": "^6.2.1",
-    "@prisma/client": "^6.2.1",
     "@supabase/ssr": "^0.10.2",
-    "@supabase/supabase-js": "^2.105.1",
+    "@supabase/supabase-js": "^2.105.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -41,7 +39,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
-    "prisma": "^6.2.1",
     "shadcn": "^4.6.0",
     "tailwindcss": "^4",
     "typescript": "^5"

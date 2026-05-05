@@ -1,12 +1,12 @@
 import { getCurrentUser } from "@/actions/auth";
 import { getProjectMembers, addProjectMember, removeProjectMember } from "@/actions/projects";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { UserPlus, UserMinus, Shield, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 
 interface TeamPageProps {
   params: Promise<{
@@ -24,14 +24,21 @@ interface ProjectMember {
 export default async function TeamPage({ params }: TeamPageProps) {
   const { projectId } = await params;
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) {
+    return (
+      <div className="p-4 text-center mt-10">
+        User profile not found. Please complete registration.
+      </div>
+    );
+  }
 
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { title: true },
-  });
+  const { data: project, error } = await supabaseAdmin
+    .from('Project')
+    .select('title')
+    .eq('id', projectId)
+    .single();
 
-  if (!project) notFound();
+  if (error || !project) notFound();
 
   const members = await getProjectMembers(projectId);
   const isAdmin = user.role === "ADMIN";

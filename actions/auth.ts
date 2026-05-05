@@ -1,12 +1,11 @@
 "use server";
 
 import { createClient } from "@/lib/supabase-server";
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { redirect } from "next/navigation";
 
 /**
- * Syncs the authenticated Supabase user into our Prisma `User` table.
- * Safe to call multiple times — uses upsert so it won't create duplicates.
+ * Syncs the authenticated Supabase user into our `User` table.
  */
 export async function syncUser() {
   const supabase = await createClient();
@@ -19,18 +18,20 @@ export async function syncUser() {
     throw new Error("Not authenticated");
   }
 
-  await prisma.user.upsert({
-    where: { supabaseId: user.id },
-    create: {
+  const { error: upsertError } = await supabaseAdmin
+    .from('User')
+    .upsert({
       supabaseId: user.id,
       email: user.email!,
       name: user.user_metadata?.full_name ?? user.email!.split("@")[0],
-      role: "ADMIN", // first user is admin; can be changed later
-    },
-    update: {
-      email: user.email!,
-    },
-  });
+      role: "ADMIN",
+    }, {
+      onConflict: 'supabaseId'
+    });
+
+  if (upsertError) {
+    throw new Error(`Sync failed: ${upsertError.message}`);
+  }
 }
 
 export async function signOut() {
@@ -40,7 +41,7 @@ export async function signOut() {
 }
 
 /**
- * Returns the current user's Prisma record, or null.
+ * Returns the current user's record, or null.
  */
 export async function getCurrentUser() {
   const supabase = await createClient();
@@ -50,18 +51,26 @@ export async function getCurrentUser() {
 
   if (!user) return null;
 
-  return prisma.user.findUnique({
-    where: { supabaseId: user.id },
-  });
+  const { data, error } = await supabaseAdmin
+    .from('User')
+    .select('*')
+    .eq('supabaseId', user.id)
+    .single();
+
+  if (error || !data) return null;
+  return data;
 }
 
 export async function getUsers() {
   const caller = await getCurrentUser();
   if (!caller) throw new Error("UNAUTHORIZED");
 
-  return prisma.user.findMany({
-    select: { id: true, name: true, email: true },
-    orderBy: { name: "asc" },
-  });
+  const { data, error } = await supabaseAdmin
+    .from('User')
+    .select('id, name, email')
+    .order('name', { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return data;
 }
 

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { getCurrentUser } from "./auth";
 import { logActivity } from "./activity";
 
@@ -14,22 +14,22 @@ const CreateTaskSchema = z.object({
   status: z.enum(["TODO", "IN_PROGRESS", "DONE"]).default("TODO"),
   priority: z.enum(["LOW", "MEDIUM", "HIGH"]).default("MEDIUM"),
   dueDate: z.string().optional(),
-  projectId: z.string().cuid(),
-  assigneeId: z.string().cuid(),
+  projectId: z.string(),
+  assigneeId: z.string(),
 });
 
 const UpdateTaskStatusSchema = z.object({
-  taskId: z.string().cuid(),
+  taskId: z.string(),
   status: z.enum(["TODO", "IN_PROGRESS", "DONE"]),
 });
 
 const UpdateTaskSchema = z.object({
-  id: z.string().cuid(),
+  id: z.string(),
   title: z.string().min(1).max(120).optional(),
   description: z.string().max(500).optional(),
   status: z.enum(["TODO", "IN_PROGRESS", "DONE"]).optional(),
   priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
-  assigneeId: z.string().cuid().optional(),
+  assigneeId: z.string().optional(),
   dueDate: z.string().optional(),
 });
 
@@ -42,8 +42,9 @@ export async function createTask(raw: unknown) {
 
   const data = CreateTaskSchema.parse(raw);
 
-  const task = await prisma.task.create({
-    data: {
+  const { data: task, error } = await supabaseAdmin
+    .from('Task')
+    .insert({
       title: data.title,
       description: data.description,
       status: data.status,
@@ -51,8 +52,11 @@ export async function createTask(raw: unknown) {
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
       projectId: data.projectId,
       assigneeId: data.assigneeId,
-    } as any,
-  });
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
 
   await logActivity({
     type: "TASK_CREATED",
@@ -73,16 +77,24 @@ export async function updateTaskStatus(raw: unknown) {
 
   // Members can only update tasks assigned to them
   if (caller.role === "MEMBER") {
-    const task = await prisma.task.findFirst({
-      where: { id: taskId, assigneeId: caller.id },
-    });
-    if (!task) throw new Error("FORBIDDEN: You can only update your own tasks.");
+    const { data: task, error } = await supabaseAdmin
+      .from('Task')
+      .select('id')
+      .eq('id', taskId)
+      .eq('assigneeId', caller.id)
+      .single();
+    
+    if (error || !task) throw new Error("FORBIDDEN: You can only update your own tasks.");
   }
 
-  const updated = await prisma.task.update({
-    where: { id: taskId },
-    data: { status },
-  });
+  const { data: updated, error: updateError } = await supabaseAdmin
+    .from('Task')
+    .update({ status })
+    .eq('id', taskId)
+    .select()
+    .single();
+
+  if (updateError) throw new Error(updateError.message);
 
   await logActivity({
     type: "STATUS_UPDATED",
@@ -103,24 +115,30 @@ export async function updateTask(raw: unknown) {
 
   // RBAC: Non-admins can only update tasks assigned to them
   if (caller.role !== "ADMIN") {
-    const task = await prisma.task.findUnique({
-      where: { id: data.id },
-      select: { assigneeId: true },
-    });
-    if (!task || task.assigneeId !== caller.id) {
+    const { data: task, error } = await supabaseAdmin
+      .from('Task')
+      .select('assigneeId')
+      .eq('id', data.id)
+      .single();
+    
+    if (error || !task || task.assigneeId !== caller.id) {
       throw new Error("FORBIDDEN: You can only update your own tasks.");
     }
   }
 
   const { id, ...updates } = data;
   
-  const updated = await prisma.task.update({
-    where: { id },
-    data: {
+  const { data: updated, error: updateError } = await supabaseAdmin
+    .from('Task')
+    .update({
       ...updates,
       dueDate: updates.dueDate ? new Date(updates.dueDate) : undefined,
-    } as any,
-  });
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (updateError) throw new Error(updateError.message);
 
   await logActivity({
     type: "TASK_UPDATED",
@@ -138,7 +156,12 @@ export async function deleteTask(taskId: string) {
   if (!caller) throw new Error("UNAUTHORIZED");
   if (caller.role !== "ADMIN") throw new Error("FORBIDDEN: Only Admins can delete tasks.");
 
-  await prisma.task.delete({ where: { id: taskId } });
+  const { error } = await supabaseAdmin
+    .from('Task')
+    .delete()
+    .eq('id', taskId);
+
+  if (error) throw new Error(error.message);
   revalidatePath("/");
 }
 
@@ -146,11 +169,12 @@ export async function getTasks(projectId: string) {
   const caller = await getCurrentUser();
   if (!caller) throw new Error("UNAUTHORIZED");
 
-  return prisma.task.findMany({
-    where: { projectId },
-    include: {
-      assignee: { select: { id: true, name: true, email: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const { data, error } = await supabaseAdmin
+    .from('Task')
+    .select('*, assignee:User(id, name, email)')
+    .eq('projectId', projectId)
+    .order('createdAt', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return data;
 }

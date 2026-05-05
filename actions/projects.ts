@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
+import { supabaseAdmin } from "@/lib/supabase";
 import { getCurrentUser } from "./auth";
 
 const CreateProjectSchema = z.object({
@@ -17,19 +17,28 @@ export async function createProject(raw: unknown) {
 
   const data = CreateProjectSchema.parse(raw);
 
-  const project = await prisma.project.create({
-    data: {
+  const { data: project, error } = await supabaseAdmin
+    .from('Project')
+    .insert({
       title: data.title,
       description: data.description,
-      members: { connect: { id: caller.id } },
-    },
-  });
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  // Connect the creator as a member
+  const { error: memberError } = await supabaseAdmin
+    .from('_ProjectMembers')
+    .insert({ A: project.id, B: caller.id });
+
+  if (memberError) throw new Error(memberError.message);
 
   try {
     revalidatePath("/");
   } catch (e) {
-    // revalidatePath is unsupported during render (e.g. GET request)
-    // We ignore it here as the current render will already have the new data
+    // revalidatePath is unsupported during render
   }
   return project;
 }
@@ -38,15 +47,30 @@ export async function getProjects() {
   const caller = await getCurrentUser();
   if (!caller) throw new Error("UNAUTHORIZED");
 
-  return prisma.project.findMany({
-    where: {
-      members: { some: { id: caller.id } },
-    },
-    include: {
-      _count: { select: { tasks: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  // Get project IDs that the user is a member of
+  const { data: memberships, error: memError } = await supabaseAdmin
+    .from('_ProjectMembers')
+    .select('A')
+    .eq('B', caller.id);
+
+  if (memError) throw new Error(memError.message);
+  const projectIds = memberships.map(m => m.A);
+
+  if (projectIds.length === 0) return [];
+
+  const { data: projects, error } = await supabaseAdmin
+    .from('Project')
+    .select('*, tasks:Task(count)')
+    .in('id', projectIds)
+    .order('createdAt', { ascending: false });
+
+  if (error) throw new Error(error.message);
+  
+  // Transform to match previous structure if needed
+  return projects.map(p => ({
+    ...p,
+    _count: { tasks: p.tasks[0]?.count || 0 }
+  }));
 }
 
 export async function deleteProject(projectId: string) {
@@ -54,7 +78,12 @@ export async function deleteProject(projectId: string) {
   if (!caller) throw new Error("UNAUTHORIZED");
   if (caller.role !== "ADMIN") throw new Error("FORBIDDEN: Only Admins can delete projects.");
 
-  await prisma.project.delete({ where: { id: projectId } });
+  const { error } = await supabaseAdmin
+    .from('Project')
+    .delete()
+    .eq('id', projectId);
+
+  if (error) throw new Error(error.message);
   revalidatePath("/");
 }
 
@@ -62,20 +91,32 @@ export async function getProjectMembers(projectId: string) {
   const caller = await getCurrentUser();
   if (!caller) throw new Error("UNAUTHORIZED");
 
-  const project = await prisma.project.findFirst({
-    where: {
-      id: projectId,
-      members: { some: { id: caller.id } },
-    },
-    include: {
-      members: {
-        select: { id: true, name: true, email: true, role: true },
-      },
-    },
-  });
+  // Verify access first
+  const { data: access, error: accessError } = await supabaseAdmin
+    .from('_ProjectMembers')
+    .select('A')
+    .eq('A', projectId)
+    .eq('B', caller.id)
+    .single();
 
-  if (!project) throw new Error("Project not found");
-  return project.members;
+  if (accessError || !access) throw new Error("Project not found or access denied");
+
+  // Get member IDs
+  const { data: memberships, error: memError } = await supabaseAdmin
+    .from('_ProjectMembers')
+    .select('B')
+    .eq('A', projectId);
+
+  if (memError) throw new Error(memError.message);
+  const userIds = memberships.map(m => m.B);
+
+  const { data: members, error } = await supabaseAdmin
+    .from('User')
+    .select('id, name, email, role')
+    .in('id', userIds);
+
+  if (error) throw new Error(error.message);
+  return members;
 }
 
 export async function addProjectMember(projectId: string, email: string) {
@@ -83,15 +124,19 @@ export async function addProjectMember(projectId: string, email: string) {
   if (!caller) throw new Error("UNAUTHORIZED");
   if (caller.role !== "ADMIN") throw new Error("FORBIDDEN: Only Admins can manage members.");
 
-  const userToAdd = await prisma.user.findUnique({ where: { email } });
-  if (!userToAdd) throw new Error("User not found. They must sign up for SwiftTask first.");
+  const { data: userToAdd, error: userError } = await supabaseAdmin
+    .from('User')
+    .select('id')
+    .eq('email', email)
+    .single();
 
-  await prisma.project.update({
-    where: { id: projectId },
-    data: {
-      members: { connect: { id: userToAdd.id } },
-    },
-  });
+  if (userError || !userToAdd) throw new Error("User not found. They must sign up for SwiftTask first.");
+
+  const { error } = await supabaseAdmin
+    .from('_ProjectMembers')
+    .insert({ A: projectId, B: userToAdd.id });
+
+  if (error) throw new Error("User is already a member or another error occurred.");
 
   revalidatePath(`/project/${projectId}/team`);
   revalidatePath("/");
@@ -102,12 +147,13 @@ export async function removeProjectMember(projectId: string, userId: string) {
   if (!caller) throw new Error("UNAUTHORIZED");
   if (caller.role !== "ADMIN") throw new Error("FORBIDDEN: Only Admins can manage members.");
 
-  await prisma.project.update({
-    where: { id: projectId },
-    data: {
-      members: { disconnect: { id: userId } },
-    },
-  });
+  const { error } = await supabaseAdmin
+    .from('_ProjectMembers')
+    .delete()
+    .eq('A', projectId)
+    .eq('B', userId);
+
+  if (error) throw new Error(error.message);
 
   revalidatePath(`/project/${projectId}/team`);
   revalidatePath("/");
